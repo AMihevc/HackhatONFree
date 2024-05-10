@@ -1,13 +1,14 @@
 import requests
 import hjson
-import json
-from pprint import pprint
 import pandas as pd
-from datetime import datetime
+from tqdm import tqdm
+
 import os
 import time
-from tqdm import tqdm
 import glob
+import json
+from pprint import pprint
+from datetime import datetime
 
 """
 Program to scrape ARSO weather data for all automatic stations for a predefined date range and save it to files.
