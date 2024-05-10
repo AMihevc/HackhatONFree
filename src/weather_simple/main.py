@@ -105,7 +105,7 @@ def get_df_from_station_res(dt_from, dt_to, station_id, dt_format="%Y-%m-%d"):
     df.rename(columns=params_dict, inplace=True)  # rename columns
     df.sort_index(inplace=True)  # sort by index
 
-    return df
+    return df, params_dict_invert
 
 
 initial = get_json_like(URL_INITIAL)
@@ -113,61 +113,70 @@ stations = initial["points"].keys()
 # stations = ["_2626"]
 
 # get data for all stations
-for station_id in tqdm(stations, desc="Stations"):
-    dir_out = f"data/{station_id}"
-    os.makedirs(dir_out, exist_ok=True)
+pbar = tqdm(stations, desc="Stations")
+for station_id in pbar:
+    pbar.set_description(f"Station {station_id}")
+    
+    # create dir for current station
+    dir_out_station = f"data/{station_id}"
+    os.makedirs(dir_out_station, exist_ok=True)
 
     station = initial["points"][station_id]
     # # ['name', 'lon', 'lat', 'alt', 'type']
     # print(station["name"], station["lon"], station["lat"], station["alt"], station["type"])
-    with open(f"{dir_out}/station.json", "w", encoding="utf-8") as f:
+    with open(f"{dir_out_station}/station.json", "w", encoding="utf-8") as f:
         text = json.dumps(station, indent=2, ensure_ascii=False)
         f.write(text)
 
     # print(station_data)
 
-    # date_from = "DATE_FR"
-    # date_to = DATE_TO
-
     # get one month pairs between 2 dates
     fmt = "%Y-%m-%d"
-    date_from = datetime.strptime(DATE_FR, fmt)
+    date_fr = datetime.strptime(DATE_FR, fmt)
     date_to = datetime.strptime(DATE_TO, fmt)
-    dt_month_beginings = pd.date_range(date_from, date_to, freq="MS")
-    dt_month_ends = pd.date_range(date_from, date_to, freq="ME")
-    date_ranges_list = list(zip(dt_month_beginings, dt_month_ends))
-    # print(dt_month_beginings)
-    # print(dt_month_ends)
+    dt_month_begs = pd.date_range(date_fr, date_to, freq="MS")
+    dt_month_ends = pd.date_range(date_fr, date_to, freq="ME")
+    date_ranges_list = list(zip(dt_month_begs, dt_month_ends))
 
-    # df_all = None
-
-    for date_from, date_to in tqdm(date_ranges_list, desc="Getting data"):
+    for date_fr, date_to in tqdm(date_ranges_list, desc="Getting data"):
         # date_from = date_from.strftime(fmt)
         # date_to = date_to.strftime(fmt)
         # print(date_from, date_to)
         
+        # filepath for params for current station
+        file_out_params = f"{dir_out_station}/params.json"
+        
         station_id_stripped = station_id.strip('_')
-        filepath_out = f"{dir_out}/{station_id_stripped}_{date_from.strftime('%Y-%m')}"
-        if os.path.exists(f"{filepath_out}.pkl"):
+        filepath_out_month = f"{dir_out_station}/{station_id_stripped}_{date_fr.strftime('%Y-%m')}"
+
+        # if data is already saved, skip
+        if os.path.exists(f"{filepath_out_month}.pkl") and os.path.exists(file_out_params):
             continue
 
-        df = get_df_from_station_res(date_from, date_to, station_id)
+        # get data for one month
+        df, params_dict_invert = get_df_from_station_res(date_fr, date_to, station_id)
 
-        # print(df.columns.tolist())
+        # if params json is not saved, save it
+        if not os.path.exists(file_out_params):
+            with open(file_out_params, "w", encoding="utf-8") as f:
+                text = json.dumps(params_dict_invert, indent=2, ensure_ascii=False)
+                f.write(text)
+
+        # if returned df is empty, skip
         if not df.columns.tolist():
-            print(f"Empty data for {date_from.strftime('%Y-%m')}")
+            print(f"Empty data for {date_fr.strftime('%Y-%m')}")
             time.sleep(0.5)
             continue
 
-        df.to_pickle(f"{filepath_out}.pkl")
-        df.to_csv(f"{filepath_out}.csv", index=True)
+        df.to_pickle(f"{filepath_out_month}.pkl")
+        df.to_csv(f"{filepath_out_month}.csv", index=True)
 
         time.sleep(1)
 
 
     # merge all to one file
     df_all = None
-    for file in glob.glob(f"{dir_out}/{station_id_stripped}*.pkl"):
+    for file in glob.glob(f"{dir_out_station}/{station_id_stripped}*.pkl"):
         df = pd.read_pickle(file)
         if df_all is None:
             df_all = df
@@ -175,8 +184,8 @@ for station_id in tqdm(stations, desc="Stations"):
             df_all = pd.concat([df_all, df])
 
     df_all.sort_index(inplace=True)  # sort by index
-    df_all.to_pickle(f"{dir_out}/_all.pkl")
-    df_all.to_csv(f"{dir_out}/_all.csv", index=True)
+    df_all.to_pickle(f"{dir_out_station}/_all.pkl")
+    df_all.to_csv(f"{dir_out_station}/_all.csv", index=True)
 
     # print(df_all.columns)
     # print(df_all)
