@@ -114,9 +114,9 @@ stations = initial["points"].keys()
 # stations = ["_2626"]
 
 # get data for all stations
-pbar = tqdm(stations, desc="Stations")
-for station_id in pbar:
-    pbar.set_description(f"Station {station_id}")
+pbar_stations = tqdm(stations, desc="Stations", position=1, leave=False)
+for station_id in pbar_stations:
+    pbar_stations.set_description(f"Station {station_id}")
     
     # create dir for current station
     dir_out_station = f"data/{station_id}"
@@ -139,7 +139,10 @@ for station_id in pbar:
     dt_month_ends = pd.date_range(date_fr, date_to, freq="ME")
     date_ranges_list = list(zip(dt_month_begs, dt_month_ends))
 
-    for date_fr, date_to in tqdm(date_ranges_list, desc="Getting data"):
+
+    pbar_months = tqdm(date_ranges_list, desc="Gathering months", position=0, leave=False)
+    for date_fr, date_to in pbar_months:
+        pbar_months.set_description(f"Month {date_fr.strftime('%Y-%m')}")
         # date_from = date_from.strftime(fmt)
         # date_to = date_to.strftime(fmt)
         # print(date_from, date_to)
@@ -165,7 +168,7 @@ for station_id in pbar:
 
         # if returned df is empty, skip
         if not df.columns.tolist():
-            print(f"Empty data for {date_fr.strftime('%Y-%m')}")
+            print(f"\nEmpty data for station {station_id}, month {date_fr.strftime('%Y-%m')}")
             time.sleep(0.5)
             continue
 
