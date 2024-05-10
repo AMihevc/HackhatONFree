@@ -9,6 +9,7 @@ import glob
 import json
 from pprint import pprint
 from datetime import datetime
+import argparse
 
 """
 Program to scrape ARSO weather data for all automatic stations for a predefined date range and save it to files.
@@ -20,6 +21,27 @@ os.makedirs("data", exist_ok=True)
 
 DATE_FR = "2022-01-01"
 DATE_TO = "2024-05-10"
+
+
+
+def valid_date(s: str) -> datetime:
+    try:
+        test = datetime.strptime(s, "%Y-%m-%d")
+        return s
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not a valid date: {s!r}")
+
+args = argparse.ArgumentParser()
+args.add_argument("--date_fr", type=valid_date, default=DATE_FR, help="The Start Date - format YYYY-MM-DD") 
+args.add_argument("--date_to", type=valid_date, default=DATE_TO, help="The End Date - format YYYY-MM-DD")
+args = args.parse_args()
+
+DATE_FR = args.date_fr
+DATE_TO = args.date_to
+
+
+print(f"Getting data from {DATE_FR} to {DATE_TO}")
+
 
 VARS_TO_GET = "12,26,21,15,23,24"
 URL_INITIAL = f"https://meteo.arso.gov.si/webmet/archive/locations.xml?d1={DATE_FR}&d2={DATE_TO}&type=4&%20lang=si"
