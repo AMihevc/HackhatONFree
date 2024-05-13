@@ -2,6 +2,10 @@ from fastapi import FastAPI
 import joblib
 import sys
 import os
+import requests
+import aiohttp
+import asyncio
+from openai import OpenAI
 
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
@@ -14,9 +18,16 @@ models.Base.metadata.create_all(bind=engine)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-from src.constants import OUT_MODEL
+# from src.constants import OUT_MODEL
 import pandas as pd
-random_forest = joblib.load(OUT_MODEL)
+# random_forest = joblib.load(OUT_MODEL)
+
+urls = ["https://www.vreme.si/api/1.0/location/?lang=sl&location=Ur%C5%A1lja%20gora",
+        "https://www.vreme.si/api/1.0/location/?lang=sl&location=Letali%C5%A1%C4%8De%20Edvarda%20Rusjana%20Maribor",
+        "https://www.vreme.si/api/1.0/location/?lang=sl&location=Celje",
+        "https://www.vreme.si/api/1.0/location/?lang=sl&location=Topol",
+        "https://www.vreme.si/api/1.0/location/?lang=sl&location=Nova%20Gorica"
+        ]
 
 app = FastAPI()
 
@@ -40,65 +51,87 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-  return {"message": "Hello World!"}
+  response = requests.get("https://www.vreme.si/api/1.0/location/?lang=sl&location=Ljubljana").json()
+#   print("the response:", response["forecast6h"]["features"][0]["properties"]["days"])
+  days = response["forecast6h"]["features"][0]["properties"]["days"]
+  desired_day = next((obj for obj in days if obj["date"] == "2024-05-15"), None) # the day for which we want the prediction
+#   print("fdsfa", desired_day)
+  part_of_desired_day = desired_day["timeline"] # here are up to 4 objects which represent part of the desired day
+  print("part_of_desired_day", part_of_desired_day)
+  return {"message": "fdsfa"}
 
-# make a prediction based on the input features, where you get the features in the request body. Also save the prediction in the database.
-@app.post("/predict/")
-async def predict(features: schemas.PredictionCreate, db: Session = Depends(get_db)):
-  features = [features['feature']]
-  prediction = random_forest.predict(features)
+# try 100 requests on the endpoint
+@app.get("/test_rate/")
+async def test_rate():
+  for i in range(6):
+    # check if the response is 200
+    response = requests.get("https://www.vreme.si/api/1.0/location/?lang=sl&location=Ljubljana").json()
+    print(f"{i} \t {response['forecast24h']}")
+  return{"message": "fdsfa"}
+
+async def make_api_call(url, session, order):
+  async with session.get(url) as response:
+    data = await response.json()
+    # days = response["forecast6h"]["features"][0]["properties"]["days"]
+    # TODO for now the date is hardcoded, we need to change it to be dynamic
+    # desired_day = next((obj for obj in days if obj["date"] == "2024-05-15"), None) # the day for which we want the prediction
+    # part_of_desired_day = desired_day["timeline"] # here are up to 4 objects which represent part of the desired day
+    # print(f"URL: {url} (Order: {order}), Data: {data}")
+    return data
+
+# do the calls with tasks
+async def get_loc_data():
+  counter = 0
+  # each task is a location(url)
+  tasks = []
+  async with aiohttp.ClientSession() as session:
+    for url in urls:
+      counter += 1
+      task = asyncio.create_task(make_api_call(url, session, counter))
+      tasks.append(task)
+    await asyncio.gather(*tasks)
+  # print(tasks[0].result()["forecast24h"]["features"])
+  return tasks
+  print("All tasks are done")
+
+@app.get("/predict/{date}/")
+async def predict(date: str):
+  print("here")
+  locations = await get_loc_data()
+  # print("locations", locations[0].result())
+  locations = [location.result() for location in locations]
+  locations = [location["forecast6h"]["features"][0]["properties"]["days"] for location in locations]
+  # now we have all the data for all the locations but just for the 6h
+  # print("locations", locations[0]["forecast24h"]["features"])
+  # features = [features['feature']]
+  # prediction = random_forest.predict(features)
   # now save the prediction in the database
-  crud.save_prediction(db, features, prediction[0])
-  return {"prediction": prediction[0]}
+  # crud.save_prediction(db, features, prediction[0])
+  # return {"prediction": prediction[0]}
+  # in every location of locations only keep the desired date
+  for i, location in enumerate(locations):
+    desired_day = next((obj for obj in location if obj["date"] == date), None)
+    locations[i] = desired_day
+  # print("locations length", len(locations[0]))
+  return locations
 
-# make a prediction based on the date that is passed as a parameter in the URL. The date should be in the format YYYY-MM-DD.
-# make a prediction with the model for all the location_ids(which there are 6 of) and return the predictions in the response.
-@app.get("/predict/{date}", response_model=dict)
-async def predict_date(date: str, db: Session = Depends(get_db)):
-  predictions = []
-  missing = []
-  df = pd.DataFrame(columns=['location_id', 'day_of_week', 'dela_prost_dan', 'RR', 'SS', 'TG', 'month', 'pretocnost_7d', 'pretocnost_3d'])
-  for i in range(0, 6):
-    # get from database the predictions for the given date for all the location_ids(0 to 5)
-    predictions = crud.get_predictions_by_date(db, date, i)
-    # if predictions is empty then continue
+@app.get("/test_gpt/")
+async def test_gpt():
+  client = OpenAI(api_key="sk-proj-bzgRr2hFwrCnGFZX1VsWT3BlbkFJhF8GoNVWH2T5aWBdOdEn")
 
-    if not predictions:
-      missing.append(i)
-      continue
-    print("fdfsafsds", predictions[0].day_of_week)
-    # create an empty dataframe
-    
-    # create a new row with the prediction values
-    new_row = {
-      'location_id': i,
-      'day_of_week': predictions[0].day_of_week,
-      'dela_prost_dan': predictions[0].free_day,
-      'RR': predictions[0].rr,
-      'SS': predictions[0].ss,
-      'TG': predictions[0].tg,
-      'month': predictions[0].month,
-      'pretocnost_7d': predictions[0].pretocnost_7,
-      'pretocnost_3d': predictions[0].pretocnost_3
-    }
+  conversation_history = [
+      {"role": "system", "content": "You are an expert on floods. You have data for a city where the chance of a flood is high. You are asked"},
+      {"role": "user", "content": "Is there going to be flood?"},
+      {"role": "assistant", "content": "Based on the data available for the city with a high risk of flooding, we can say that there is a high probability of a flood occurring. However, it is not possible to predict with certainty whether a flood will definitely happen or not. It is important to stay informed about weather forecasts and follow the guidance provided by local authorities to stay safe in case of a flood."},
+      {"role": "user", "content": "What should I do to secure my house?"},
+      # Continue adding messages as the conversation progresses
+  ]
 
-    new_df = pd.DataFrame(new_row, index=[0])
-    print("new_df", new_df)
+  response = client.chat.completions.create(
+      model="gpt-4",
+      messages=conversation_history,
+      stream=True
+  )
 
-    # append the new row to the dataframe
-    print(df.columns, new_df.columns)
-    df = pd.concat([df, new_df], ignore_index=True)
-
-  print("the df +++++++++++++++++", df)
-  df.to_csv("df.csv", index=False)
-  df = pd.read_csv("df.csv")
-  print("this is df", df)
-  final_predictions = random_forest.predict(df)
-  final_predictions = final_predictions.tolist()
-  # add to final_predictions the missing location_ids with the value 3
-  for i in missing:
-    final_predictions = list(final_predictions)
-    final_predictions.insert(i, 3)
-  print("final_predictions", final_predictions)
-  # return the predictions
-  return {"predictions": final_predictions}
+  for chunk in response:
+    print(chunk.choices[0].delta)
