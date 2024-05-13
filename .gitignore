@@ -2,3 +2,6 @@ src/weather_simple/ams-data
 src/weather_simple/DRSV_POPDOG
 src/weather_simple/hid_2010_2018_2022.txt
 src/weather_simple/hid_2010_2020_2022.txt
+.history
+src/backend/__pycache__
+hack_env
