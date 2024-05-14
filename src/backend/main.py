@@ -18,9 +18,8 @@ models.Base.metadata.create_all(bind=engine)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-# from src.constants import OUT_MODEL
 import pandas as pd
-# random_forest = joblib.load(OUT_MODEL)
+random_forest = joblib.load("models/model_rf")
 
 urls = ["https://www.vreme.si/api/1.0/location/?lang=sl&location=Ur%C5%A1lja%20gora",
         "https://www.vreme.si/api/1.0/location/?lang=sl&location=Letali%C5%A1%C4%8De%20Edvarda%20Rusjana%20Maribor",
@@ -118,6 +117,79 @@ async def predict(date: str):
     desired_day = next((obj for obj in location if obj["date"] == date), None)
     locations[i] = desired_day
   # print("locations length", len(locations[0]))
+
+  df = pd.DataFrame(columns=['station_id', 'padavine_klicina_00', 'temperatura_avg_00', 'veter_hitrost_00', 'veter_sunki_00',
+                                           'padavine_klicina_06', 'temperatura_avg_06', 'veter_hitrost_06', 'veter_sunki_06',
+                                           'padavine_klicina_12', 'temperatura_avg_12', 'veter_hitrost_12', 'veter_sunki_12',
+                                           'padavine_klicina_18', 'temperatura_avg_18', 'veter_hitrost_18', 'veter_sunki_18',
+                                           'month'])
+  ffmax_val_mean = 0
+  count = 0
+  for i, location in enumerate(locations):
+    new_row = {
+      'station_id': ids[i]["id"],
+      'padavine_klicina_00': location["timeline"][0]["tp_acc"],
+      'temperatura_avg_00': location["timeline"][0]["t"],
+      'veter_hitrost_00': location["timeline"][0]["ff_val"],
+      'veter_sunki_00': location["timeline"][0]["ffmax_val"],
+      'padavine_klicina_06': location["timeline"][1]["tp_acc"],
+      'temperatura_avg_06': location["timeline"][1]["t"],
+      'veter_hitrost_06': location["timeline"][1]["ff_val"],
+      'veter_sunki_06': location["timeline"][1]["ffmax_val"],
+      'padavine_klicina_12': location["timeline"][2]["tp_acc"],
+      'temperatura_avg_12': location["timeline"][2]["t"],
+      'veter_hitrost_12': location["timeline"][2]["ff_val"],
+      'veter_sunki_12': location["timeline"][2]["ffmax_val"],
+      'padavine_klicina_18': location["timeline"][3]["tp_acc"],
+      'temperatura_avg_18': location["timeline"][3]["t"],
+      'veter_hitrost_18': location["timeline"][3]["ff_val"],
+      'veter_sunki_18': location["timeline"][3]["ffmax_val"],
+      'month': str(int(location["date"].split("-")[1]))
+    }
+    # check value is None or empty, if not then add zero
+    if new_row["veter_sunki_00"] is None or new_row["veter_sunki_00"] == "":
+      new_row["veter_sunki_00"] = 0
+    ffmax_val_mean += int(new_row["veter_sunki_00"])
+
+    if new_row["veter_sunki_06"] is None or new_row["veter_sunki_06"] == "":
+      new_row["veter_sunki_06"] = 0
+    ffmax_val_mean += int(new_row["veter_sunki_06"])
+
+    if new_row["veter_sunki_12"] is None or new_row["veter_sunki_12"] == "":
+      new_row["veter_sunki_12"] = 0
+    ffmax_val_mean += int(new_row["veter_sunki_12"])
+
+    if new_row["veter_sunki_18"] is None or new_row["veter_sunki_18"] == "":
+      new_row["veter_sunki_18"] = 0
+    ffmax_val_mean += int(new_row["veter_sunki_18"])
+    ffmax_val_mean = ffmax_val_mean / 4
+
+    new_row["veter_sunki_00"] = ffmax_val_mean
+    new_row["veter_sunki_06"] = ffmax_val_mean
+    new_row["veter_sunki_12"] = ffmax_val_mean
+    new_row["veter_sunki_18"] = ffmax_val_mean
+    ffmax_val_mean = 0
+    # chech if any of the values is None or empty
+    # for key, value in new_row.items():
+    #   if value == None or value == "":
+    #     count += 1
+    #     new_row[key] = 0
+    #     print("key", key, i)
+
+    
+
+
+    new_df = pd.DataFrame(new_row, index=[0])
+
+    df = pd.concat([df, new_df], ignore_index=True)
+  
+  # print("the df +++++++++++++++++", df)
+
+  final_predictions = random_forest.predict(df)
+  final_predictions = final_predictions.tolist()
+  print("final_predictions", final_predictions)
+  # df.to_csv("df.csv", index=False)
+  # df = pd.read_csv("df.csv")
   return locations
 
 @app.get("/test_gpt/")
