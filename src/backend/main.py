@@ -19,6 +19,7 @@ models.Base.metadata.create_all(bind=engine)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 import pandas as pd
+import datetime
 random_forest = joblib.load("models/model_rf")
 
 urls = ["https://www.vreme.si/api/1.0/location/?lang=sl&location=Ur%C5%A1lja%20gora",
@@ -61,7 +62,7 @@ async def root():
   desired_day = next((obj for obj in days if obj["date"] == "2024-05-15"), None) # the day for which we want the prediction
 #   print("fdsfa", desired_day)
   part_of_desired_day = desired_day["timeline"] # here are up to 4 objects which represent part of the desired day
-  print("part_of_desired_day", part_of_desired_day)
+  # print("part_of_desired_day", part_of_desired_day)
   return {"message": "fdsfa"}
 
 # try 100 requests on the endpoint
@@ -100,7 +101,7 @@ async def get_loc_data():
 
 @app.get("/predict/{date}/")
 async def predict(date: str):
-  print("here")
+  # print("here")
   locations = await get_loc_data()
   # print("locations", locations[0].result())
   locations = [location.result() for location in locations]
@@ -187,10 +188,25 @@ async def predict(date: str):
 
   final_predictions = random_forest.predict(df)
   final_predictions = final_predictions.tolist()
-  print("final_predictions", final_predictions)
+  # print("final_predictions", final_predictions)
   # df.to_csv("df.csv", index=False)
   # df = pd.read_csv("df.csv")
-  return locations
+  # print(locations[0]["date"])
+  # get today date
+  today = datetime.date.today()
+
+  response = {
+    "urslja": final_predictions[0],
+    "maribor": final_predictions[1],
+    "celje": final_predictions[2],
+    "topol": final_predictions[3],
+    "nova_gorica": final_predictions[4],
+    "context": 'You are an expert in floods. You have data for a probabilty of floods in five different locations in Slovenia. Values of the predictions are between 0 and 2.' +
+    ' 0 means no floods, 1 means low probability of floods, 2 means high probability of floods. The values are as follows: Uršlja gora: ' + str(final_predictions[0]) + ', Maribor: ' +
+    str(final_predictions[1]) + ', Celje: ' + str(final_predictions[2]) + ', Topol: ' + str(final_predictions[3]) + ', and Nova Gorica: ' + str(final_predictions[4]) +
+    ' and the values are for date: ' + locations[0]["date"] + '. and today is: ' + str(today) + '.'
+  }
+  return response
 
 @app.get("/test_gpt/")
 async def test_gpt():
