@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Map from './Map.vue';
-import Statistics from './Statistics.vue';
+import Chat from './Chat.vue';
 
 </script>
 
@@ -14,8 +14,8 @@ import Statistics from './Statistics.vue';
         permanent
       >
         <v-list color="transparent">
-          <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" @click="selected = Map" ></v-list-item>
-          <v-list-item prepend-icon="mdi-account-box" title="Account" @click="selected = Statistics"> </v-list-item>
+          <v-list-item prepend-icon="mdi-view-dashboard" title="Zemljevid ogroženosti" @click="selected = Map" ></v-list-item>
+          <v-list-item prepend-icon="mdi-account-box" title="Poplavko" @click="selected = Chat"> </v-list-item>
         </v-list>
 
       </v-navigation-drawer>

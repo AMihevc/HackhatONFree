@@ -18,9 +18,9 @@ models.Base.metadata.create_all(bind=engine)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-# from src.constants import OUT_MODEL
 import pandas as pd
-# random_forest = joblib.load(OUT_MODEL)
+import datetime
+random_forest = joblib.load("models/model_rf")
 
 urls = ["https://www.vreme.si/api/1.0/location/?lang=sl&location=Ur%C5%A1lja%20gora",
         "https://www.vreme.si/api/1.0/location/?lang=sl&location=Letali%C5%A1%C4%8De%20Edvarda%20Rusjana%20Maribor",
@@ -28,6 +28,11 @@ urls = ["https://www.vreme.si/api/1.0/location/?lang=sl&location=Ur%C5%A1lja%20g
         "https://www.vreme.si/api/1.0/location/?lang=sl&location=Topol",
         "https://www.vreme.si/api/1.0/location/?lang=sl&location=Nova%20Gorica"
         ]
+ids = [{"kraj": "Uršlja gora", "id": 2619},
+       {"kraj": "Edvarda Rusjana", "id": 1838},
+       {"kraj": "Celje", "id": 2471},
+       {"kraj": "Topol", "id": 2842},
+       {"kraj": "Nova Gorica", "id": 1822}]
 
 app = FastAPI()
 
@@ -57,7 +62,7 @@ async def root():
   desired_day = next((obj for obj in days if obj["date"] == "2024-05-15"), None) # the day for which we want the prediction
 #   print("fdsfa", desired_day)
   part_of_desired_day = desired_day["timeline"] # here are up to 4 objects which represent part of the desired day
-  print("part_of_desired_day", part_of_desired_day)
+  # print("part_of_desired_day", part_of_desired_day)
   return {"message": "fdsfa"}
 
 # try 100 requests on the endpoint
@@ -96,7 +101,7 @@ async def get_loc_data():
 
 @app.get("/predict/{date}/")
 async def predict(date: str):
-  print("here")
+  # print("here")
   locations = await get_loc_data()
   # print("locations", locations[0].result())
   locations = [location.result() for location in locations]
@@ -113,25 +118,112 @@ async def predict(date: str):
     desired_day = next((obj for obj in location if obj["date"] == date), None)
     locations[i] = desired_day
   # print("locations length", len(locations[0]))
-  return locations
+
+  df = pd.DataFrame(columns=['station_id', 'padavine_klicina_00', 'temperatura_avg_00', 'veter_hitrost_00', 'veter_sunki_00',
+                                           'padavine_klicina_06', 'temperatura_avg_06', 'veter_hitrost_06', 'veter_sunki_06',
+                                           'padavine_klicina_12', 'temperatura_avg_12', 'veter_hitrost_12', 'veter_sunki_12',
+                                           'padavine_klicina_18', 'temperatura_avg_18', 'veter_hitrost_18', 'veter_sunki_18',
+                                           'month'])
+  ffmax_val_mean = 0
+  count = 0
+  for i, location in enumerate(locations):
+    new_row = {
+      'station_id': ids[i]["id"],
+      'padavine_klicina_00': location["timeline"][0]["tp_acc"],
+      'temperatura_avg_00': location["timeline"][0]["t"],
+      'veter_hitrost_00': location["timeline"][0]["ff_val"],
+      'veter_sunki_00': location["timeline"][0]["ffmax_val"],
+      'padavine_klicina_06': location["timeline"][1]["tp_acc"],
+      'temperatura_avg_06': location["timeline"][1]["t"],
+      'veter_hitrost_06': location["timeline"][1]["ff_val"],
+      'veter_sunki_06': location["timeline"][1]["ffmax_val"],
+      'padavine_klicina_12': location["timeline"][2]["tp_acc"],
+      'temperatura_avg_12': location["timeline"][2]["t"],
+      'veter_hitrost_12': location["timeline"][2]["ff_val"],
+      'veter_sunki_12': location["timeline"][2]["ffmax_val"],
+      'padavine_klicina_18': location["timeline"][3]["tp_acc"],
+      'temperatura_avg_18': location["timeline"][3]["t"],
+      'veter_hitrost_18': location["timeline"][3]["ff_val"],
+      'veter_sunki_18': location["timeline"][3]["ffmax_val"],
+      'month': str(int(location["date"].split("-")[1]))
+    }
+    # check value is None or empty, if not then add zero
+    if new_row["veter_sunki_00"] is None or new_row["veter_sunki_00"] == "":
+      new_row["veter_sunki_00"] = 0
+    ffmax_val_mean += int(new_row["veter_sunki_00"])
+
+    if new_row["veter_sunki_06"] is None or new_row["veter_sunki_06"] == "":
+      new_row["veter_sunki_06"] = 0
+    ffmax_val_mean += int(new_row["veter_sunki_06"])
+
+    if new_row["veter_sunki_12"] is None or new_row["veter_sunki_12"] == "":
+      new_row["veter_sunki_12"] = 0
+    ffmax_val_mean += int(new_row["veter_sunki_12"])
+
+    if new_row["veter_sunki_18"] is None or new_row["veter_sunki_18"] == "":
+      new_row["veter_sunki_18"] = 0
+    ffmax_val_mean += int(new_row["veter_sunki_18"])
+    ffmax_val_mean = ffmax_val_mean / 4
+
+    new_row["veter_sunki_00"] = ffmax_val_mean
+    new_row["veter_sunki_06"] = ffmax_val_mean
+    new_row["veter_sunki_12"] = ffmax_val_mean
+    new_row["veter_sunki_18"] = ffmax_val_mean
+    ffmax_val_mean = 0
+    # chech if any of the values is None or empty
+    # for key, value in new_row.items():
+    #   if value == None or value == "":
+    #     count += 1
+    #     new_row[key] = 0
+    #     print("key", key, i)
+
+    
+
+
+    new_df = pd.DataFrame(new_row, index=[0])
+
+    df = pd.concat([df, new_df], ignore_index=True)
+  
+  # print("the df +++++++++++++++++", df)
+
+  final_predictions = random_forest.predict(df)
+  final_predictions = final_predictions.tolist()
+  # print("final_predictions", final_predictions)
+  # df.to_csv("df.csv", index=False)
+  # df = pd.read_csv("df.csv")
+  # print(locations[0]["date"])
+  # get today date
+  today = datetime.date.today()
+
+  response = {
+    "urslja": final_predictions[0],
+    "maribor": final_predictions[1],
+    "celje": final_predictions[2],
+    "topol": final_predictions[3],
+    "nova_gorica": final_predictions[4],
+    "context": 'You are an expert in floods. You have data for a probabilty of floods in five different locations in Slovenia. Values of the predictions are between 0 and 2.' +
+    ' 0 means no floods, 1 means low probability of floods, 2 means high probability of floods. The values are as follows: Uršlja gora: ' + str(final_predictions[0]) + ', Maribor: ' +
+    str(final_predictions[1]) + ', Celje: ' + str(final_predictions[2]) + ', Topol: ' + str(final_predictions[3]) + ', and Nova Gorica: ' + str(final_predictions[4]) +
+    ' and the values are for date: ' + locations[0]["date"] + '. and today is: ' + str(today) + '.'
+  }
+  return response
 
 @app.get("/test_gpt/")
 async def test_gpt():
   client = OpenAI(api_key="sk-proj-bzgRr2hFwrCnGFZX1VsWT3BlbkFJhF8GoNVWH2T5aWBdOdEn")
 
   conversation_history = [
-      {"role": "system", "content": "You are an expert on floods. You have data for a city where the chance of a flood is high. You are asked"},
-      {"role": "user", "content": "Is there going to be flood?"},
-      {"role": "assistant", "content": "Based on the data available for the city with a high risk of flooding, we can say that there is a high probability of a flood occurring. However, it is not possible to predict with certainty whether a flood will definitely happen or not. It is important to stay informed about weather forecasts and follow the guidance provided by local authorities to stay safe in case of a flood."},
-      {"role": "user", "content": "What should I do to secure my house?"},
+      {"role": "system", "content": "Ste ekspert na področju poplav. Imate podatke, da je zelo velika verjetnost poplav v Ljubljani v naslednjih treh dneh."},
+      {"role": "user", "content": "Ali bodo v naslednjih dneh kje v Sloveniji poplave?"}
       # Continue adding messages as the conversation progresses
   ]
 
   response = client.chat.completions.create(
       model="gpt-4",
       messages=conversation_history,
-      stream=True
+      # stream=True
   )
 
-  for chunk in response:
-    print(chunk.choices[0].delta)
+  # for chunk in response:
+  #   print(chunk.choices[0].delta)
+  print(response.choices[0].message)

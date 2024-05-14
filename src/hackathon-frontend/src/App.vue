@@ -3,6 +3,6 @@ import Home from './components/Home.vue';
 </script>
 
 <template>
-  <Home msg="Vite + Vue" />
+  <Home />
 </template>
 
