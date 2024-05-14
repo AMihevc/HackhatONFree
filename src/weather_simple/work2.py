@@ -1,11 +1,19 @@
 import pandas as pd
 
 
-DATA_OUT = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/koroska_stations.pkl"
-DATA_OUT_CLEAN = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/koroska_stations_clean.csv"
+# OUT_MACRO_REGION_STATIONS = "maribor_stations"
+# OUT_MACRO_REGION_STATIONS = "koroska_stations"
+# OUT_MACRO_REGION_STATIONS = "ljubljana_stations"
+# OUT_MACRO_REGION_STATIONS = "celje_stations"
+OUT_MACRO_REGION_STATIONS = "nova_gorica_stations"
 
-DATA_OUT_TRAIN_X = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/koroska_macro_train_X.pkl"
-DATA_OUT_TRAIN_Y = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/koroska_macro_train_y.pkl"
+DATA_OUT = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/{OUT_MACRO_REGION_STATIONS}.pkl"
+DATA_OUT_CLEAN = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/{OUT_MACRO_REGION_STATIONS}_clean.pkl"
+
+DATA_OUT_TRAIN_X = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_X.pkl"
+DATA_OUT_TRAIN_X_CSV = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_X.csv"
+DATA_OUT_TRAIN_Y = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_y.pkl"
+DATA_OUT_TRAIN_Y_CSV = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_y.csv"
 
 DATA_VISINA = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_visina/data.csv"
 
@@ -71,7 +79,7 @@ df = pd.merge(df, df_visina, on="date", how="left")
 
 
 # todo: remove date, station_id
-df = df.drop(columns=["date", "station_id"])
+df = df.drop(columns=["date"])
 
 
 # 5 quantiles semaphore for pretok_m3s ->  pretok_m3s_q column
@@ -88,6 +96,24 @@ df["pretok_m3s_q"] = df["pretok_m3s_q"].map(lambda x: -3 if x >= 20 else (-2 if 
 df["pretok_m3s_q"] = df["pretok_m3s_q"]*-1 -1
 
 
+df.to_pickle(DATA_OUT_CLEAN)
+
+# OUT_MACRO_REGION_STATIONS = "ljubljana_stations"
+# OUT_MACRO_REGION_STATIONS = "celje_stations"
+# OUT_MACRO_REGION_STATIONS = "nova_gorica_stations"
+
+df_all = pd.DataFrame()
+for macro_loc in ["koroska_stations", "maribor_stations", "ljubljana_stations", "celje_stations", "nova_gorica_stations"]:
+    macro_path = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/{}_clean.pkl".format(macro_loc)
+    df_tmp = pd.read_pickle(macro_path)
+    df_all = pd.concat([df_all, df_tmp], ignore_index=True)
+
+print(df_all.head())
+
+df = df_all
+
+
+
 
 print(df.head())
 print(df["pretok_m3s_q"].unique())
@@ -99,7 +125,9 @@ X = df.drop(columns=["pretok_m3s", "pretok_m3s_q"])
 y.to_pickle(DATA_OUT_TRAIN_Y)
 X.to_pickle(DATA_OUT_TRAIN_X)
 
+y.to_csv(DATA_OUT_TRAIN_Y_CSV)
+X.to_csv(DATA_OUT_TRAIN_X_CSV)
 
-df.to_csv(DATA_OUT_CLEAN, index=False)
+
 # df = pd.read_excel(DATA_POPLAVE)
 # print(df.head())

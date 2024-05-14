@@ -44,7 +44,20 @@ DATE_FROM = "2018-01-01"
 DATE_TO = "2022-12-31"
 
 # KOROSKA STATIONS
-STATIONS_TO_USE = ["2620", "2845", "1839", "2666", "2654", "2631", "2619"]
+# STATIONS_TO_USE = ["2620", "2845", "1839", "2666", "2654", "2631", "2619"]
+# OUT_MACRO_REGION_STATIONS = "koroska_stations"
+
+# STATIONS_TO_USE = ["1838"]
+# OUT_MACRO_REGION_STATIONS = "maribor_stations"
+
+# STATIONS_TO_USE = ["2842"]
+# OUT_MACRO_REGION_STATIONS = "ljubljana_stations"
+
+# STATIONS_TO_USE = ["2471"]
+# OUT_MACRO_REGION_STATIONS = "celje_stations"
+
+STATIONS_TO_USE = ["1824"]
+OUT_MACRO_REGION_STATIONS = "nova_gorica_stations"
 
 df_stations = pd.read_pickle(DATA_STATIONS_INFO)
 print(df_stations.head())
@@ -159,8 +172,8 @@ for csv_path in tqdm(glob(DATA), desc="Processing stations"):
         # print(df_row_to_add.head())
 
 
-df_all.to_csv(f"{DATA_OUT}/koroska_stations.csv", index=True)
-df_all.to_pickle(f"{DATA_OUT}/koroska_stations.pkl")
+df_all.to_csv(f"{DATA_OUT}/{OUT_MACRO_REGION_STATIONS}.csv", index=True)
+df_all.to_pickle(f"{DATA_OUT}/{OUT_MACRO_REGION_STATIONS}.pkl")
 
     # print("Station id", station_id)
     # print(df.head(10))
