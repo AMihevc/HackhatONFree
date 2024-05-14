@@ -28,6 +28,11 @@ urls = ["https://www.vreme.si/api/1.0/location/?lang=sl&location=Ur%C5%A1lja%20g
         "https://www.vreme.si/api/1.0/location/?lang=sl&location=Topol",
         "https://www.vreme.si/api/1.0/location/?lang=sl&location=Nova%20Gorica"
         ]
+ids = [{"kraj": "Uršlja gora", "id": 2619},
+       {"kraj": "Edvarda Rusjana", "id": 1838},
+       {"kraj": "Celje", "id": 2471},
+       {"kraj": "Topol", "id": 2842},
+       {"kraj": "Nova Gorica", "id": 1822}]
 
 app = FastAPI()
 
@@ -120,18 +125,17 @@ async def test_gpt():
   client = OpenAI(api_key="sk-proj-bzgRr2hFwrCnGFZX1VsWT3BlbkFJhF8GoNVWH2T5aWBdOdEn")
 
   conversation_history = [
-      {"role": "system", "content": "You are an expert on floods. You have data for a city where the chance of a flood is high. You are asked"},
-      {"role": "user", "content": "Is there going to be flood?"},
-      {"role": "assistant", "content": "Based on the data available for the city with a high risk of flooding, we can say that there is a high probability of a flood occurring. However, it is not possible to predict with certainty whether a flood will definitely happen or not. It is important to stay informed about weather forecasts and follow the guidance provided by local authorities to stay safe in case of a flood."},
-      {"role": "user", "content": "What should I do to secure my house?"},
+      {"role": "system", "content": "Ste ekspert na področju poplav. Imate podatke, da je zelo velika verjetnost poplav v Ljubljani v naslednjih treh dneh."},
+      {"role": "user", "content": "Ali bodo v naslednjih dneh kje v Sloveniji poplave?"}
       # Continue adding messages as the conversation progresses
   ]
 
   response = client.chat.completions.create(
       model="gpt-4",
       messages=conversation_history,
-      stream=True
+      # stream=True
   )
 
-  for chunk in response:
-    print(chunk.choices[0].delta)
+  # for chunk in response:
+  #   print(chunk.choices[0].delta)
+  print(response.choices[0].message)
