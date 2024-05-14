@@ -1,10 +1,10 @@
 import pandas as pd
 
 
-# OUT_MACRO_REGION_STATIONS = "koroska_stations"
-# OUT_MACRO_REGION_STATIONS = "maribor_stations"
-# OUT_MACRO_REGION_STATIONS = "ljubljana_stations"
-# OUT_MACRO_REGION_STATIONS = "celje_stations"
+OUT_MACRO_REGION_STATIONS = "koroska_stations"
+OUT_MACRO_REGION_STATIONS = "maribor_stations"
+OUT_MACRO_REGION_STATIONS = "ljubljana_stations"
+OUT_MACRO_REGION_STATIONS = "celje_stations"
 OUT_MACRO_REGION_STATIONS = "nova_gorica_stations"
 locations_counter = 5
 macro_locations = ["koroska_stations", "maribor_stations", "ljubljana_stations", "celje_stations", "nova_gorica_stations"][:locations_counter]
@@ -74,10 +74,13 @@ df = df[df["station_id"] == df["station_id"].unique()[0]]
 df_visina = pd.read_csv(data_visina_macro, sep=";")
 print(df_visina.head())
 
+# leave only "Datum" and "vodostaj (cm)" columns
+df_visina = df_visina[["Datum", "vodostaj (cm)"]]
+
 # Datum to datetime
 df_visina["Datum"] = pd.to_datetime(df_visina["Datum"], format="%d.%m.%Y")
 # rename to date
-df_visina.rename(columns={"Datum": "date", "pretok (m3/s)": "pretok_m3s"}, inplace=True)
+df_visina.rename(columns={"Datum": "date", "vodostaj (cm)": "vodostaj_cm"}, inplace=True)
 
 # merge with df based on date
 df = pd.merge(df, df_visina, on="date", how="left")
@@ -87,18 +90,18 @@ df = pd.merge(df, df_visina, on="date", how="left")
 df = df.drop(columns=["date"])
 
 
-# 5 quantiles semaphore for pretok_m3s ->  pretok_m3s_q column
+# 5 quantiles semaphore for vodostaj_cm ->  vodostaj_cm_q column
 # TODO: uporabi poplavne dogodke, da dolocis boljše mejne vrednosti
 N_QUANT = 21
-df["pretok_m3s_q"] = pd.qcut(df["pretok_m3s"], N_QUANT, labels=False, duplicates="drop")
+df["vodostaj_cm_q"] = pd.qcut(df["vodostaj_cm"], N_QUANT, labels=False, duplicates="drop")
 
 
-# pretok_m3s_q 20 to -3
-# pretok_m3s_q 10-19 to -2
-# pretok_m3s_q 0-9 to -1
-df["pretok_m3s_q"] = df["pretok_m3s_q"].map(lambda x: -3 if x >= 20 else (-2 if x >= 10 else -1))
+# vodostaj_cm_q 20 to -3
+# vodostaj_cm_q 10-19 to -2
+# vodostaj_cm_q 0-9 to -1
+df["vodostaj_cm_q"] = df["vodostaj_cm_q"].map(lambda x: -3 if x >= 20 else (-2 if x >= 10 else -1))
 
-df["pretok_m3s_q"] = df["pretok_m3s_q"]*-1 -1
+df["vodostaj_cm_q"] = df["vodostaj_cm_q"]*-1 -1
 
 
 df.to_pickle(DATA_OUT_CLEAN)
@@ -125,11 +128,11 @@ df.to_csv(f"{DATA_OUT_CLEAN_FINAL_ZENODO}.csv")
 
 
 print(df.head())
-print(df["pretok_m3s_q"].unique())
-print(df["pretok_m3s_q"].value_counts())
+print(df["vodostaj_cm_q"].unique())
+print(df["vodostaj_cm_q"].value_counts())
 
-y = df["pretok_m3s_q"]
-X = df.drop(columns=["pretok_m3s", "pretok_m3s_q"])
+y = df["vodostaj_cm_q"]
+X = df.drop(columns=["vodostaj_cm", "vodostaj_cm_q"])
 
 y.to_pickle(DATA_OUT_TRAIN_Y)
 X.to_pickle(DATA_OUT_TRAIN_X)
