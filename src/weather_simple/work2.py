@@ -1,21 +1,26 @@
 import pandas as pd
 
 
-# OUT_MACRO_REGION_STATIONS = "maribor_stations"
 # OUT_MACRO_REGION_STATIONS = "koroska_stations"
+# OUT_MACRO_REGION_STATIONS = "maribor_stations"
 # OUT_MACRO_REGION_STATIONS = "ljubljana_stations"
 # OUT_MACRO_REGION_STATIONS = "celje_stations"
 OUT_MACRO_REGION_STATIONS = "nova_gorica_stations"
+locations_counter = 5
+macro_locations = ["koroska_stations", "maribor_stations", "ljubljana_stations", "celje_stations", "nova_gorica_stations"][:locations_counter]
 
 DATA_OUT = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/{OUT_MACRO_REGION_STATIONS}.pkl"
 DATA_OUT_CLEAN = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/{OUT_MACRO_REGION_STATIONS}_clean.pkl"
+DATA_OUT_CLEAN_FINAL_ZENODO = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_clean_zenodo"
 
 DATA_OUT_TRAIN_X = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_X.pkl"
 DATA_OUT_TRAIN_X_CSV = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_X.csv"
 DATA_OUT_TRAIN_Y = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_y.pkl"
 DATA_OUT_TRAIN_Y_CSV = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_y.csv"
 
-DATA_VISINA = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_visina/data.csv"
+# remove "_stations"
+macro_location = OUT_MACRO_REGION_STATIONS[:-9]
+data_visina_macro = f"/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_visina/data_{macro_location}.csv"
 
 
 df = pd.read_pickle(DATA_OUT)
@@ -66,7 +71,7 @@ df = df[df["station_id"] == df["station_id"].unique()[0]]
 
 
 
-df_visina = pd.read_csv(DATA_VISINA, sep=";")
+df_visina = pd.read_csv(data_visina_macro, sep=";")
 print(df_visina.head())
 
 # Datum to datetime
@@ -103,7 +108,7 @@ df.to_pickle(DATA_OUT_CLEAN)
 # OUT_MACRO_REGION_STATIONS = "nova_gorica_stations"
 
 df_all = pd.DataFrame()
-for macro_loc in ["koroska_stations", "maribor_stations", "ljubljana_stations", "celje_stations", "nova_gorica_stations"]:
+for macro_loc in macro_locations:
     macro_path = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/{}_clean.pkl".format(macro_loc)
     df_tmp = pd.read_pickle(macro_path)
     df_all = pd.concat([df_all, df_tmp], ignore_index=True)
@@ -112,6 +117,10 @@ print(df_all.head())
 
 df = df_all
 
+
+# this is final data for zenodo upload
+df.to_pickle(f"{DATA_OUT_CLEAN_FINAL_ZENODO}.pkl")
+df.to_csv(f"{DATA_OUT_CLEAN_FINAL_ZENODO}.csv")
 
 
 
