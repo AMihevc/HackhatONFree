@@ -1,5 +1,5 @@
 za Korosko makro lokacijo
-https://vode.arso.gov.si/hidarhiv/pov_arhiv_tab.php?p_vodotok=Drava&p_postaja=2010&p_od_leto=2018&p_do_leto=2022&b_oddo_CSV=Izvoz dnevnih vrednosti v CSV
+https://vode.arso.gov.si/hidarhiv/pov_arhiv_tab.php?p_vodotok=Drava&p_postaja=2005&p_od_leto=2018&p_do_leto=2022&b_oddo_CSV=Izvoz dnevnih vrednosti v CSV
 
 za Maribor makro lokacijo
 https://vode.arso.gov.si/hidarhiv/pov_arhiv_tab.php?p_vodotok=Drava&p_postaja=2110&p_od_leto=2018&p_do_leto=2022&b_oddo_CSV=Izvoz dnevnih vrednosti v CSV
@@ -12,3 +12,8 @@ https://vode.arso.gov.si/hidarhiv/pov_arhiv_tab.php?p_vodotok=Sava&p_postaja=353
 
 za Novo Gorico makro
 https://vode.arso.gov.si/hidarhiv/pov_arhiv_tab.php?p_vodotok=Vipava&p_postaja=8601&p_od_leto=2018&p_do_leto=2022&b_oddo_CSV=Izvoz dnevnih vrednosti v CSV
+
+
+example:
+
+    wget --no-check-certificate "https://vode.arso.gov.si/hidarhiv/pov_arhiv_tab.php?p_vodotok=Drava&p_postaja=2005&p_od_leto=2018&p_do_leto=2022&b_oddo_CSV=Izvoz dnevnih vrednosti v CSV" -O data_koroska.csv

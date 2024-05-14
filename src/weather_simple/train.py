@@ -6,10 +6,10 @@ from sklearn.model_selection import train_test_split
 # from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report
-import xgboost as xgb
+# import xgboost as xgb
 
-DATA_OUT_TRAIN_X = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/koroska_macro_train_X.pkl"
-DATA_OUT_TRAIN_Y = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/koroska_macro_train_y.pkl"
+DATA_OUT_TRAIN_X = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_X.pkl"
+DATA_OUT_TRAIN_Y = "/d/hpc/home/tp1859/HackhatONFree/src/weather_simple/data_out/all_macro_train_y.pkl"
 
 
 df_X = pd.read_pickle(DATA_OUT_TRAIN_X)
